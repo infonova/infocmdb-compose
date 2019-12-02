@@ -1,0 +1,92 @@
+version: "3.4"
+
+services:
+
+  mariadb:
+    image: ${COMPOSE_DOCKER_REGISTRY}/infocmdb-db:${IMAGE_TAG:-latest}
+    volumes:
+      - 'database-volume:/var/lib/mysql'
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-infoCMDB}
+      - MYSQL_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+#    Uncomment if you need db access via TCP
+#    ports:
+#      - '${DOCKER_DB_PORT}:3306'
+    networks:
+      default:
+        aliases:
+          - db
+
+  php:
+    image: ${COMPOSE_DOCKER_REGISTRY}/infocmdb-php:${IMAGE_TAG:-latest}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
+    volumes:
+      - "data-volume:/app/data:cached"
+    tmpfs:
+      - /app/data/cache:mode=1777
+      - /app/data/session:mode=1777
+      - /app/data/tmp:mode=1777
+    environment:
+      - APPLICATION_ENV=${APPLICATION_ENV:-production}
+      - APP_LIBRARY_PERL_REPO=${APP_LIBRARY_PERL_REPO:-}
+      - APP_LIBRARY_GOLANG_REPO=${APP_LIBRARY_GOLANG_REPO:-}
+      - DB_HOST=${DB_HOST:-mariadb}
+      - DB_DATABASE=${DB_DATABASE:-infoCMDB}
+      - DB_USERNAME=${DB_USERNAME:-infoCMDB}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_ROOT_USERNAME=${DB_ROOT_USERNAME:-root}
+      - DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
+    restart: always
+    depends_on:
+      - mariadb
+      - web
+    networks:
+      default:
+
+  cron:
+    image: ${COMPOSE_DOCKER_REGISTRY}/infocmdb-cron:${IMAGE_TAG:-latest}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
+    restart: always
+    depends_on:
+      - php
+    networks:
+      - default
+
+  web:
+    image: ${COMPOSE_DOCKER_REGISTRY}/infocmdb-web:${IMAGE_TAG:-latest}
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "1M"
+        max-file: "10"
+    volumes:
+      - "data-volume:/app/data:ro"
+      - "./docker/nginx/custom-conf:/bootstrap/custom-conf:ro"
+    environment:
+      - DOCKER_WEB_HOSTNAME=${DOCKER_WEB_HOSTNAME}
+      - DOCKER_WEB_HOSTALIAS=${DOCKER_WEB_HOSTALIAS:-infocmdb}
+      - APPLICATION_ENV=${APPLICATION_ENV:-production}
+    ports:
+      - "0.0.0.0:${DOCKER_WEB_PORT:-80}:80"
+      - "0.0.0.0:${DOCKER_WEB_SSL_PORT:-443}:443"
+    restart: always
+
+volumes:
+  data-volume:
+  database-volume:
+
+networks:
+  default:

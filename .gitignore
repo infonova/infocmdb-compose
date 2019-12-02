@@ -1,0 +1,4 @@
+.env
+/.idea
+/docker
+/docker-compose.override.yml
