@@ -74,7 +74,7 @@ services:
         max-file: "10"
     volumes:
       - "data-volume:/app/data:ro"
-      - "./docker/nginx/custom-conf:/bootstrap/custom-conf:ro"
+#      - "./docker/nginx/custom-conf:/bootstrap/custom-conf:ro"
     environment:
       - DOCKER_WEB_HOSTNAME=${DOCKER_WEB_HOSTNAME}
       - DOCKER_WEB_HOSTALIAS=${DOCKER_WEB_HOSTALIAS:-infocmdb}
